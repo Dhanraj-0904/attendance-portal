@@ -52,15 +52,11 @@ def migrate(postgres_url: str):
                 continue
                 
             # Detach records from sqlite session and add to pg session
+            from sqlalchemy.orm import make_transient
             for r in records:
                 sqlite_db.expunge(r)
-                # make transient
-                r.id = None  # let postgres auto-generate primary keys if needed, or keep original ids
-            
-            # To preserve original primary key relationships, we copy primary keys as is:
-            # We must enable IDENTITY_INSERT or similar if needed, but for PostgreSQL, it handles explicit IDs perfectly!
-            for r in records:
-                pg_db.merge(r)
+                make_transient(r)
+                pg_db.add(r)
                 
             pg_db.commit()
             print(f"Successfully migrated {len(records)} records for {name}.")
