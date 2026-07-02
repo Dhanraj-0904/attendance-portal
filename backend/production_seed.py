@@ -99,9 +99,23 @@ def seed_production_db(db: Session):
 
     students_list = []
     for idx, (name, sid) in enumerate(mock_students):
+        student_user_pwd = get_password_hash("student123")
+        user = User(
+            username=sid,
+            email=f"{sid.lower()}@ngo.org",
+            hashed_password=student_user_pwd,
+            role="student",
+            phone=f"900000000{idx}",
+            plain_password="student123",
+            is_active=True
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
         s = Student(
             batch_id=batch.id,
-            user_id=student_user.id if idx == 0 else None,
+            user_id=user.id,
             aadhaar_hash=str(hash(sid)),
             name=name,
             phone=f"900000000{idx}",
