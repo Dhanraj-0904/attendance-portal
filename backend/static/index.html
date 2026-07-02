@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSS Attendance Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css?v=45">
+</head>
+<body>
+    <div id="app">
+        <!-- Toast Notification Container -->
+        <div id="toast-container"></div>
+
+        <!-- ================= LOGIN SCREEN ================= -->
+        <div id="login-screen" class="screen active">
+            <button id="theme-toggle-login" class="btn btn-secondary" style="position: absolute; top: 20px; right: 20px; z-index: 1000;">🌓 Theme</button>
+            <div class="glass-card login-card">
+                <div class="login-logos" style="display: flex; justify-content: center; gap: 18px; margin-bottom: 25px; align-items: center;">
+                    <img src="/static/assets/jss_logo.jpg" alt="JSS Logo" style="height: 65px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.15);">
+                    <img src="/static/assets/jss_banner.jpg" alt="JSS Banner" style="height: 65px; border-radius: 8px; border: 1.5px solid rgba(255,255,255,0.15);">
+                </div>
+                <div class="brand" style="margin-top: 10px;">
+                    <span class="brand-tag">JSS Attendance Portal</span>
+                    <h1>Jan Shikhshan Sansthan</h1>
+                    <p>Attendance Management Portal</p>
+                </div>
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="login-username">Username</label>
+                        <input type="text" id="login-username" placeholder="Enter username (e.g. admin, teacher)" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Password</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="login-password" placeholder="••••••••" required>
+                            <span class="password-toggle" onclick="togglePasswordVisibility('login-password', this)">SHOW</span>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Log In</button>
+                </form>
+                <div class="login-footer">
+                    <p>Demo Credentials: <code>admin</code> / <code>admin123</code> or <code>teacher</code> / <code>teacher123</code> or <code>student</code> / <code>student123</code></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= MAIN APP SCREEN ================= -->
+        <div id="main-screen" class="screen">
+            <!-- Navigation Header -->
+            <header class="main-header">
+                <div class="header-logo">
+                    <img src="/static/assets/jss_logo.jpg" alt="JSS Logo" style="height: 38px; width: 38px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.15); margin-right: 8px;">
+                    <div>
+                        <h2>JSS Attendance Portal</h2>
+                        <span id="user-display" class="user-role-badge">Admin</span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button id="theme-toggle-main" class="btn btn-secondary" style="margin-right: 12px;">🌓 Theme</button>
+                    <button id="header-change-password-btn" onclick="openResetPasswordModal(null, null, true)" class="btn btn-secondary" style="margin-right: 12px;">🔑 Change Password</button>
+                    <button id="logout-btn" class="btn btn-secondary">Log Out</button>
+                </div>
+            </header>
+
+            <div class="app-layout">
+                <!-- Sidebar (Responsive Navigation) -->
+                <aside class="sidebar">
+                    <div class="mobile-nav-header" onclick="toggleMobileNav()">
+                        <span id="mobile-nav-active-text">📈 Dashboard</span>
+                        <span class="chevron">▼</span>
+                    </div>
+                    <div class="sidebar-logo" style="padding: 0 10px 20px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 20px;">
+                        <img src="/static/assets/jss_banner.jpg" alt="JSS Banner" style="width: 100%; border-radius: 6px; opacity: 0.95; border: 1px solid rgba(255,255,255,0.1);">
+                    </div>
+                    <!-- Admin Navigation -->
+                    <div id="nav-admin" class="nav-group">
+                        <h3>JSS COORDINATOR</h3>
+                        <a href="#admin-dashboard" class="nav-item active" data-tab="admin-dashboard">
+                            <span class="icon">📈</span> Dashboard
+                        </a>
+                        <a href="#admin-centers" class="nav-item" data-tab="admin-centers">
+                            <span class="icon">🏢</span> Centers
+                        </a>
+                        <a href="#admin-batches" class="nav-item" data-tab="admin-batches">
+                            <span class="icon">📅</span> Batches
+                        </a>
+                        <a href="#admin-teachers" class="nav-item" data-tab="admin-teachers">
+                            <span class="icon">👨‍🏫</span> Teachers
+                        </a>
+                        <a href="#admin-leaves" class="nav-item" data-tab="admin-leaves">
+                            <span class="icon">📅</span> Leave Approvals
+                        </a>
+                        
+                        
+                    </div>
+
+                    <!-- Teacher Navigation -->
+                    <div id="nav-teacher" class="nav-group hidden">
+                        <h3>INSTRUCTOR</h3>
+                        <a href="#teacher-dashboard" class="nav-item active" data-tab="teacher-dashboard">
+                            <span class="icon">📈</span> Dashboard
+                        </a>
+                        <a href="#teacher-upload" class="nav-item" data-tab="teacher-upload">
+                            <span class="icon">📤</span> Sync Attendance
+                        </a>
+                        <a href="#teacher-leaves" class="nav-item" data-tab="teacher-leaves">
+                            <span class="icon">📅</span> Request Leave
+                        </a>
+                    </div>
+
+                    <!-- Student Navigation -->
+                    <div id="nav-student" class="nav-group hidden">
+                        <h3>STUDENT</h3>
+                        <a href="#student-dashboard" class="nav-item active" data-tab="student-dashboard">
+                            <span class="icon">👤</span> My Attendance
+                        </a>
+                    </div>
+                </aside>
+
+                <!-- Main Content Area -->
+                <main class="content-area">
+                    <!-- ================= ADMIN DASHBOARD TAB ================= -->
+                    <section id="tab-admin-dashboard" class="tab-content active">
+                        <div class="dashboard-header">
+                            <h1>Coordinator Dashboard</h1>
+                            <p>Overview of training centers, batches, and student eligibility.</p>
+                        </div>
+
+                        <!-- Global Metrics Row -->
+                        <div class="metrics-grid">
+                            <div class="glass-card metric-card">
+                                <span class="metric-icon students-icon">👥</span>
+                                <div class="metric-data">
+                                    <h3 id="admin-stat-students">0</h3>
+                                    <p>Total Registered Students</p>
+                                </div>
+                            </div>
+                            <div class="glass-card metric-card">
+                                <span class="metric-icon batches-icon">📅</span>
+                                <div class="metric-data">
+                                    <h3 id="admin-stat-batches">0</h3>
+                                    <p>Total Batches</p>
+                                </div>
+                            </div>
+                            <div class="glass-card metric-card">
+                                <span class="metric-icon centers-icon">🏢</span>
+                                <div class="metric-data">
+                                    <h3 id="admin-stat-centers">0</h3>
+                                    <p>Training Centers</p>
+                                </div>
+                            </div>
+                            <div class="glass-card metric-card alert-card" id="admin-risk-card">
+                                <span class="metric-icon alert-icon">⚠️</span>
+                                <div class="metric-data">
+                                    <h3 id="admin-stat-risk">0</h3>
+                                    <p>Students Below 75%</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Top & Bottom Performers Grid -->
+                        <div class="content-grid">
+                            <div class="glass-card">
+                                <div class="card-header">
+                                    <h2>Center Performance Comparison</h2>
+                                    <span class="help-tooltip" title="Average attendance percentage for all students enrolled at the center.">ℹ️</span>
+                                </div>
+                                <div class="table-container">
+                                    <table class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Center Name</th>
+                                                <th>District/Code</th>
+                                                <th>Students</th>
+                                                <th>Avg. Attendance</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="admin-center-comparison-body">
+                                            <tr><td colspan="4" class="text-center">Loading comparisons...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="glass-card">
+                                <div class="card-header">
+                                    <h2>Teacher Attendance Summary</h2>
+                                </div>
+                                <div class="table-container">
+                                    <table class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Teacher Name</th>
+                                                <th>Batches</th>
+                                                <th>Students</th>
+                                                <th>Avg. Attendance</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="admin-teacher-rankings-body">
+                                            <tr><td colspan="4" class="text-center">Loading rankings...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ================= ADMIN CENTERS TAB ================= -->
+                    <section id="tab-admin-centers" class="tab-content">
+                        <div class="tab-header-action">
+                            <div>
+                                <h1>Training Centers</h1>
+                                <p>Manage the list of official NGO training centers and codes.</p>
+                            </div>
+                            <button class="btn btn-primary" onclick="openModal('center-modal')">+ Add Center</button>
+                        </div>
+
+
+                        <div class="glass-card mt-20">
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Center Name</th>
+                                            
+                                            <th>District</th>
+                                            <th>State</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-centers-table-body">
+                                        <!-- Populated by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ================= ADMIN BATCHES TAB ================= -->
+                    <section id="tab-admin-batches" class="tab-content">
+                        <div class="tab-header-action">
+                            <div>
+                                <h1>Batch Schedules</h1>
+                                <p>Configure course batches, total sessions, and link to teachers.</p>
+                            </div>
+                            <button class="btn btn-primary" onclick="openModal('batch-modal')">+ Create Batch</button>
+                        </div>
+
+
+                        <div class="glass-card mt-20">
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Course Name</th>
+                                            <th>Center</th>
+                                            <th>Teacher</th>
+                                            <th>Total Hours</th>
+                                            <th>Students</th>
+                                            <th>Class Eligibility</th>
+                                            
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-batches-table-body">
+                                        <!-- Populated by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ================= ADMIN TEACHERS TAB ================= -->
+                    <section id="tab-admin-teachers" class="tab-content">
+                        <div class="tab-header-action">
+                            <div>
+                                <h1>Teacher Management</h1>
+                                <p>Create, edit, and manage teacher profiles and login accounts.</p>
+                            </div>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <button id="btn-cancel-delete-teachers" class="btn btn-secondary hidden" onclick="exitTeacherDeleteMode()" style="margin: 0; padding: 10px 18px; border-radius: 8px;">Cancel</button>
+                                <button id="btn-delete-teachers-mode" class="btn btn-destructive" onclick="enterTeacherDeleteMode()" style="margin: 0; padding: 10px 18px; border-radius: 8px;">🗑️ Delete Teacher</button>
+                                <button class="btn btn-primary" onclick="openModal('teacher-modal')" style="margin: 0;">+ Add Teacher</button>
+                            </div>
+                        </div>
+
+
+                        <div class="glass-card mt-20">
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="delete-col-header hidden" style="width: 40px;"></th>
+                                            <th>Username</th>
+                                            <th>Email</th>
+                                            <th>Phone</th>
+                                            <th>Subject</th>
+                                            
+                                            
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-teachers-table-body">
+                                        <!-- Populated by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+
+                    
+                    <!-- ================= ADMIN BATCHES DETAIL TAB ================= -->
+                    <section id="tab-admin-batches-detail" class="tab-content">
+                        <div class="dashboard-header flex-header">
+                            <div>
+                                <h1 id="admin-batch-detail-title">Select a Batch</h1>
+                                <p id="admin-batch-detail-sub">View list and download reports.</p>
+                            </div>
+                            <div id="admin-batch-detail-actions" class="hidden">
+                                <button id="btn-admin-batch-pdf" class="btn btn-primary">📄 Download PDF Report</button>
+                                <button id="btn-admin-batch-excel" class="btn btn-secondary">📊 Export Excel</button>
+                            </div>
+                        </div>
+
+                        <!-- Class summary widget -->
+                        <div id="admin-batch-detail-summary-card" class="glass-card mt-20 hidden">
+                            <div class="class-summary-grid">
+                                <div>
+                                    <span class="label">Course Name</span>
+                                    <span class="val" id="admin-det-course">Beauty Care Assistant</span>
+                                </div>
+                                <div>
+                                    <span class="label">SID Batch ID</span>
+                                    <span class="val" id="admin-det-sid">TC325939</span>
+                                </div>
+                                <div>
+                                    <span class="label">Training Center</span>
+                                    <span class="val" id="admin-det-center">Shyam Nagar Center</span>
+                                </div>
+                                <div>
+                                    <span class="label">Class Eligibility Status</span>
+                                    <span class="val" id="admin-det-eligibility">ELIGIBLE</span>
+                                </div>
+                            </div>
+                        </div>
+
+
+
+                        <div class="glass-card mt-20">
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Student SID ID</th>
+                                            <th>Name</th>
+                                            <th>Attended</th>
+                                            <th>Missed</th>
+                                            <th>Attendance %</th>
+                                            <th>Needed to Reach 75%</th>
+                                            <th>Assessment Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-batch-students-body">
+                                        <tr><td colspan="8" class="text-center">Loading batch details...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+    
+                                        <!-- ================= ADMIN LEAVES TAB ================= -->
+                    <section id="tab-admin-leaves" class="tab-content">
+                        <div class="dashboard-header">
+                            <h1>Teacher Leave Approvals</h1>
+                            <p>Approve or decline day off permission requests from teachers.</p>
+                        </div>
+                        <div class="glass-card mt-20">
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Teacher</th>
+                                            <th>Date Requested</th>
+                                            <th>Reason</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-leaves-table-body">
+                                        <tr><td colspan="6" class="text-center">Loading leave requests...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ================= TEACHER DASHBOARD TAB ================= -->
+                    <section id="tab-teacher-dashboard" class="tab-content">
+                        <div class="dashboard-header">
+                            <h1>Teacher Portal Dashboard</h1>
+                            <p>Welcome back! Monitor your batches and identify at-risk students.</p>
+                        </div>
+
+                        <div class="metrics-grid">
+                            <div class="glass-card metric-card">
+                                <span class="metric-icon batches-icon">📅</span>
+                                <div class="metric-data">
+                                    <h3 id="teacher-stat-batches">0</h3>
+                                    <p>My Batches</p>
+                                </div>
+                            </div>
+                            <div class="glass-card metric-card">
+                                <span class="metric-icon students-icon">👥</span>
+                                <div class="metric-data">
+                                    <h3 id="teacher-stat-students">0</h3>
+                                    <p>My Students</p>
+                                </div>
+                            </div>
+                            <div class="glass-card metric-card alert-card">
+                                <span class="metric-icon alert-icon">⚠️</span>
+                                <div class="metric-data">
+                                    <h3 id="teacher-stat-risk">0</h3>
+                                    <p>At Risk (Below 75%)</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="content-grid mt-20">
+                            <!-- Batches list -->
+                            <div class="glass-card">
+                                <div class="card-header">
+                                    <h2>My Batches Overview</h2>
+                                </div>
+                                <div class="table-container">
+                                    <table class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Course Name</th>
+                                                <th>SID Batch ID</th>
+                                                <th>Students</th>
+                                                <th>Class Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="teacher-batches-list-body">
+                                            <!-- Populated by JS -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- At Risk List -->
+                            <div class="glass-card">
+                                <div class="card-header">
+                                    <h2>Urgent: At-Risk Students</h2>
+                                    <span class="badge badge-danger">Contact Immediately</span>
+                                </div>
+                                <div class="table-container">
+                                    <table class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Batch</th>
+                                                <th>Attendance %</th>
+                                                
+                                            </tr>
+                                        </thead>
+                                        <tbody id="teacher-risk-students-body">
+                                            <!-- Populated by JS -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ================= TEACHER BATCHES DETAIL TAB ================= -->
+                    <section id="tab-teacher-batches" class="tab-content">
+                        <div class="dashboard-header flex-header">
+                            <div>
+                                <h1 id="batch-detail-title">Select a Batch</h1>
+                                <p id="batch-detail-sub">View list and download reports.</p>
+                            </div>
+                            <div id="batch-detail-actions" class="hidden">
+                                <button id="btn-batch-pdf" class="btn btn-primary">📄 Download PDF Report</button>
+                                <button id="btn-batch-excel" class="btn btn-secondary">📊 Export Excel</button>
+                            </div>
+                        </div>
+
+                        <!-- Class summary widget -->
+                        <div id="batch-detail-summary-card" class="glass-card mt-20 hidden">
+                            <div class="class-summary-grid">
+                                <div>
+                                    <span class="label">Course Name</span>
+                                    <span class="val" id="det-course">Beauty Care Assistant</span>
+                                </div>
+                                <div>
+                                    <span class="label">SID Batch ID</span>
+                                    <span class="val" id="det-sid">TC325939</span>
+                                </div>
+                                <div>
+                                    <span class="label">Training Center</span>
+                                    <span class="val" id="det-center">Shyam Nagar Center</span>
+                                </div>
+                                <div>
+                                    <span class="label">Class Eligibility Status</span>
+                                    <span class="val" id="det-eligibility">ELIGIBLE</span>
+                                </div>
+                            </div>
+                        </div>
+
+
+
+                        <div class="glass-card mt-20">
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Student SID ID</th>
+                                            <th>Name</th>
+                                            <th>Attended</th>
+                                            <th>Missed</th>
+                                            <th>Attendance %</th>
+                                            <th>Needed to Reach 75%</th>
+                                            <th>Assessment Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="teacher-batch-students-body">
+                                        <tr><td colspan="7" class="text-center">Select a batch from the sidebar or dashboard first.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ================= TEACHER UPLOAD TAB ================= -->
+                    <section id="tab-teacher-upload" class="tab-content">
+                        <div class="dashboard-header">
+                            <h1>Sync Attendance</h1>
+                            <p>Select a date and upload the daily attendance CSV file. The portal will automatically record present students and mark the remaining batch students as absent.</p>
+                        </div>
+
+                        <div class="sync-grid-container mt-20">
+                            <!-- Left Column: Settings & File Drop -->
+                            <div class="glass-card">
+                                <form id="upload-csv-form">
+                                    <div class="form-group">
+                                        <label for="upload-batch-select">Select Target Batch</label>
+                                        <select id="upload-batch-select" required>
+                                            <option value="">-- Choose Batch --</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="upload-date-input">Select Attendance Date</label>
+                                        <input type="date" id="upload-date-input" required>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Upload Attendance CSV File</label>
+                                        <div class="drop-zone" id="csv-drop-zone">
+                                            <span class="drop-zone-icon">📥</span>
+                                            <p class="drop-zone-text">Drag and drop your attendance CSV here, or click to browse</p>
+                                            <input type="file" id="csv-file-input" accept=".csv" class="hidden" required>
+                                        </div>
+                                        <div id="file-name-display" class="file-display hidden">
+                                            Selected: <strong id="selected-file-name">file.csv</strong>
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary btn-block">⚡ Sync Attendance</button>
+                                </form>
+
+                                <hr style="margin: 25px 0; border: 0; border-top: 1px solid var(--card-border);">
+
+                                <div class="undo-sync-section">
+                                    <h3 style="font-size: 16px; margin-bottom: 8px;">↩️ Undo Last Upload</h3>
+                                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px; line-height: 1.4;">
+                                        Uploaded the wrong CSV file? Select the batch below and revert the last import.
+                                    </p>
+                                    <form id="undo-sync-form">
+                                        <div class="form-group">
+                                            <label for="undo-batch-select">Select Batch to Revert</label>
+                                            <select id="undo-batch-select" required>
+                                                <option value="">-- Choose Batch --</option>
+                                            </select>
+                                        </div>
+                                        <button type="submit" class="btn btn-destructive btn-block">Revert Last Import</button>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <!-- Right Column: Interactive Calendar Widget -->
+                            <div class="glass-card select-calendar-card">
+                                <div class="calendar-header-actions" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                    <h3 style="font-size: 16px; margin: 0;">📅 Attendance Visualizer</h3>
+                                    <div style="display: flex; gap: 8px; align-items: center;">
+                                        <button class="btn btn-secondary btn-small" id="cal-prev-month" type="button" style="margin: 0;">&lt;</button>
+                                        <span id="cal-current-month-year" style="font-size: 14px; font-weight: 600; min-width: 110px; text-align: center;">June 2026</span>
+                                        <button class="btn btn-secondary btn-small" id="cal-next-month" type="button" style="margin: 0;">&gt;</button>
+                                    </div>
+                                </div>
+                                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">
+                                    Click a date in the calendar below to select the attendance date. Dates highlighted in green have attendance uploaded.
+                                </p>
+                                <div class="calendar-grid-header" style="margin-top: 10px;">
+                                    <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                                </div>
+                                <div class="calendar-grid" id="teacher-sync-calendar-grid">
+                                    <!-- Populated dynamically by JS -->
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                                        <!-- ================= TEACHER LEAVES TAB ================= -->
+                    <section id="tab-teacher-leaves" class="tab-content">
+                        <div class="tab-header-action">
+                            <div>
+                                <h1>My Day Off Requests</h1>
+                                <p>Submit new requests for day off permission and track status.</p>
+                            </div>
+                            <button class="btn btn-primary" onclick="openModal('request-leave-modal')">+ Request Day Off</button>
+                        </div>
+                        <div class="glass-card mt-20">
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date Requested</th>
+                                            <th>Reason</th>
+                                            
+                                            <th>Requested At</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="teacher-leaves-table-body">
+                                        <tr><td colspan="4" class="text-center">Loading day off logs...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ================= STUDENT DASHBOARD TAB ================= -->
+                    <section id="tab-student-dashboard" class="tab-content">
+                        <div class="dashboard-header">
+                            <h1>My Attendance Profile</h1>
+                            <p>Check your assessment eligibility status and daily calendar logs.</p>
+                        </div>
+
+                        <div class="student-profile-layout mt-20">
+                            <!-- Circular Attendance Ring -->
+                            <div class="glass-card student-stats-card">
+                                <div class="progress-ring-container">
+                                    <div class="progress-ring-value">
+                                        <h2 id="student-ring-pct">0%</h2>
+                                        <p>My Attendance</p>
+                                    </div>
+                                </div>
+                                <div class="student-details-list">
+                                    <div class="detail-row">
+                                        <span>Assessment Status:</span>
+                                        <strong id="student-status-badge" class="badge">Checking...</strong>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span>Hours Attended:</span>
+                                        <strong id="student-stat-attended">0</strong>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span>Hours Missed:</span>
+                                        <strong id="student-stat-missed">0</strong>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span>Mandatory Target (75%):</span>
+                                        <strong id="student-stat-remaining">0</strong>
+                                    </div>
+                                </div>
+
+                                <div class="glass-card status-msg-box" id="student-action-msg">
+                                    <!-- Dynamic text populated by JS -->
+                                </div>
+                            </div>
+
+                            <!-- Calendar View -->
+                            <div class="glass-card student-calendar-card">
+                                <div class="calendar-header-actions" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                    <h2 style="margin: 0;">Attendance Calendar</h2>
+                                    <div style="display: flex; gap: 8px; align-items: center;">
+                                        <button class="btn btn-secondary btn-small" id="student-cal-prev" type="button" style="margin: 0;">&lt;</button>
+                                        <span id="student-cal-month-year" style="font-size: 14px; font-weight: 600; min-width: 110px; text-align: center;">June 2026</span>
+                                        <button class="btn btn-secondary btn-small" id="student-cal-next" type="button" style="margin: 0;">&gt;</button>
+                                    </div>
+                                </div>
+                                <p>Green = Present, Red = Absent, Gray = No Session / Rest Day</p>
+                                <div class="calendar-grid-header">
+                                    <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                                </div>
+                                <div class="calendar-grid" id="student-calendar-grid">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </main>
+            </div>
+        </div>
+
+        <!-- ================= MODAL WINDOWS ================= -->
+        <!-- Center Modal -->
+        <div id="center-modal" class="modal">
+            <div class="modal-content glass-card">
+                <div class="modal-header">
+                    <h2>Add Training Center</h2>
+                    <span class="close-btn" onclick="closeModal('center-modal')">&times;</span>
+                </div>
+                <form id="center-form">
+                    <div class="form-group">
+                        <label for="center-name">Center Name</label>
+                        <input type="text" id="center-name" placeholder="e.g. JSS Sub Center Shyam Nagar" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="center-district">District</label>
+                        <input type="text" id="center-district" placeholder="e.g. Raipur" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="center-state">State</label>
+                        <input type="text" id="center-state" placeholder="e.g. Chhattisgarh" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Add Training Center</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Batch Modal -->
+        <div id="batch-modal" class="modal">
+            <div class="modal-content glass-card">
+                <div class="modal-header">
+                    <h2>Create Batch</h2>
+                    <span class="close-btn" onclick="closeModal('batch-modal')">&times;</span>
+                </div>
+                <form id="batch-form">
+                    <div class="form-group">
+                        <label for="batch-center">Training Center</label>
+                        <select id="batch-center" required>
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="batch-teacher">Assigned Teacher</label>
+                        <select id="batch-teacher" required>
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="batch-course">Course Name</label>
+                        <input type="text" id="batch-course" placeholder="e.g. Beauty Care Assistant" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="batch-start">Start Date</label>
+                        <input type="date" id="batch-start" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="batch-hours">Total Course Hours</label>
+                        <input type="number" id="batch-hours" min="1" value="330" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="batch-duration">Daily Class Duration (hours)</label>
+                        <input type="number" id="batch-duration" min="0.1" max="24.0" step="0.01" value="8.25" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Create Batch</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Teacher Modal -->
+        <div id="teacher-modal" class="modal">
+            <div class="modal-content glass-card">
+                <div class="modal-header">
+                    <h2>Add Teacher Account</h2>
+                    <span class="close-btn" onclick="closeModal('teacher-modal')">&times;</span>
+                </div>
+                <form id="teacher-form">
+                    <div class="form-group">
+                        <label for="teach-username">Username</label>
+                        <input type="text" id="teach-username" placeholder="e.g. sunita_teacher" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="teach-email">Email Address</label>
+                        <input type="email" id="teach-email" placeholder="teacher@ngo.org" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="teach-phone">Phone Number</label>
+                        <input type="tel" id="teach-phone" placeholder="e.g. 9876543210" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="teach-subject">Subject / Course Specialization</label>
+                        <input type="text" id="teach-subject" placeholder="e.g. Beauty Care Assistant" required style="padding: 12px 16px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: white; font-size: 14px; width: 100%;">
+                    </div>
+                    <div class="form-group">
+                        <label for="teach-password">Password</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="teach-password" placeholder="Min 6 characters" required>
+                            <span class="password-toggle" onclick="togglePasswordVisibility('teach-password', this)">SHOW</span>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Register Teacher</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Student Modal -->
+        <div id="student-modal" class="modal">
+            <div class="modal-content glass-card">
+                <div class="modal-header">
+                    <h2>Register Student</h2>
+                    <span class="close-btn" onclick="closeModal('student-modal')">&times;</span>
+                </div>
+                <form id="student-form">
+                    <div class="form-group">
+                        <label for="stud-batch">Assign to Batch</label>
+                        <select id="stud-batch" required>
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="stud-name">Full Name</label>
+                        <input type="text" id="stud-name" placeholder="e.g. Aarti Baghel" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="stud-sid">Student SID ID</label>
+                        <input type="text" id="stud-sid" placeholder="e.g. CAN_40343428" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="stud-phone">Phone Number</label>
+                        <input type="tel" id="stud-phone" placeholder="e.g. 9988776655">
+                    </div>
+                    <div class="form-group">
+                        <label for="stud-aadhaar">Aadhaar Number (Last 4 digits / code)</label>
+                        <input type="text" id="stud-aadhaar" placeholder="e.g. 1234" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Register Student</button>
+                </form>
+            </div>
+        </div>
+
+        
+
+    </div>
+
+        <!-- Teacher Student CSV Upload Modal -->
+        <div id="teacher-student-upload-modal" class="modal">
+            <div class="modal-content glass-card">
+                <div class="modal-header">
+                    <h2 id="teacher-upload-modal-title" style="font-size: 18px;">Upload Students for Teacher</h2>
+                    <span class="close-btn" onclick="closeModal('teacher-student-upload-modal')">&times;</span>
+                </div>
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px; line-height: 1.4;">
+                    Upload the master student list CSV. Students will be automatically grouped and allocated to their respective batches matching their course department.
+                </p>
+                <form id="teacher-student-upload-form">
+                    <input type="hidden" id="teacher-upload-teacher-id">
+                    <div class="form-group">
+                        <label for="teacher-student-file-input">Select Master CSV File</label>
+                        <input type="file" id="teacher-student-file-input" accept=".csv" required style="padding: 8px; border: 1px solid var(--card-border); border-radius: 8px; width: 100%; background: rgba(255,255,255,0.03); color: var(--text-main);">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">⚡ Sync Teacher's Students</button>
+                </form>
+            </div>
+        </div>
+
+    
+        <!-- Request Leave Modal -->
+        <div id="request-leave-modal" class="modal">
+            <div class="modal-content glass-card">
+                <div class="modal-header">
+                    <h2>Request Day Off</h2>
+                    <span class="close-btn" onclick="closeModal('request-leave-modal')">&times;</span>
+                </div>
+                <form id="request-leave-form">
+                    <div class="form-group">
+                        <label for="leave-date-input">Select Date</label>
+                        <input type="date" id="leave-date-input" required style="padding: 12px 16px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: white; font-size: 14px; width: 100%;">
+                    </div>
+                    <div class="form-group">
+                        <label for="leave-reason-input">Reason for Holiday</label>
+                        <textarea id="leave-reason-input" placeholder="e.g. Health issue, family function, urgent personal work..." required style="padding: 12px 16px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: white; font-size: 14px; width: 100%; height: 100px; resize: none;"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">⚡ Submit Request</button>
+                </form>
+            </div>
+        </div>
+
+    
+        <!-- Reset Password Modal -->
+        <div id="reset-password-modal" class="modal">
+            <div class="modal-content glass-card">
+                <div class="modal-header">
+                    <h2 id="reset-password-title">🔑 Change Password</h2>
+                    <span class="close-btn" onclick="closeModal('reset-password-modal')">&times;</span>
+                </div>
+                <form id="reset-password-form">
+                    <input type="hidden" id="reset-password-target-id">
+                    <div class="form-group">
+                        <label for="reset-new-password">New Password</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="reset-new-password" placeholder="Min 6 characters" required style="padding: 12px 16px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: white; font-size: 14px; width: 100%;">
+                            <span class="password-toggle" onclick="togglePasswordVisibility('reset-new-password', this)">SHOW</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="reset-confirm-password">Confirm Password (Double Check)</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="reset-confirm-password" placeholder="Confirm new password" required style="padding: 12px 16px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: white; font-size: 14px; width: 100%;">
+                            <span class="password-toggle" onclick="togglePasswordVisibility('reset-confirm-password', this)">SHOW</span>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">⚡ Update Password</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edit Student Modal -->
+        <div id="edit-student-modal" class="modal">
+            <div class="modal-content glass-card">
+                <div class="modal-header">
+                    <h2>Edit Student Details</h2>
+                    <span class="close-btn" onclick="closeModal('edit-student-modal')">&times;</span>
+                </div>
+                <form id="edit-student-form">
+                    <input type="hidden" id="edit-student-id">
+                    <div class="form-group">
+                        <label for="edit-student-name">Full Name</label>
+                        <input type="text" id="edit-student-name" placeholder="e.g. Aarti Baghel" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-student-password">Reset Password</label>
+                        <input type="password" id="edit-student-password" placeholder="Enter new password (optional)">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Save Changes</button>
+                </form>
+            </div>
+        </div>
+
+    <script src="/static/app.js?v=51"></script>
+</body>
+</html>
