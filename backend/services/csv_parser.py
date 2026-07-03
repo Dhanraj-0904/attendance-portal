@@ -10,6 +10,8 @@ def clean_cell_value(val):
     if pd.isna(val):
         return ""
     val_str = str(val).strip()
+    if val_str.endswith(".0"):
+        val_str = val_str[:-2]
     # Remove Excel formula format: ="12345" or ="""12345"
     if val_str.startswith('="') and val_str.endswith('"'):
         val_str = val_str[2:-1]
@@ -322,24 +324,67 @@ def parse_admin_student_list_csv(csv_content: bytes):
     df = pd.read_csv(csv_data_io, sep=sep)
     df.columns = [col.strip().replace('"', '') for col in df.columns]
 
+    cols = [col for col in df.columns if "unnamed" not in col.lower()]
     id_col = None
     code_col = None
     name_col = None
     dept_col = None
     loc_col = None
 
-    for col in df.columns:
-        col_clean = col.lower()
-        if any(h in col_clean for h in ["emp_code", "emp code", "candidate code", "student code"]):
-            code_col = col
-        elif any(h in col_clean for h in ["emp_id", "emp id", "student id", "candidate id", "roll", "s.no", "serial", "aadhaar", "aadhar"]):
-            id_col = col
-        elif any(h in col_clean for h in ["employee_name", "employee_", "employee", "name", "candidate", "student", "member", "naam", "नाम"]):
-            name_col = col
-        elif any(h in col_clean for h in ["emp_department", "department", "division", "subject", "course"]):
-            dept_col = col
-        elif any(h in col_clean for h in ["emp_location", "emp_locat", "location", "office location", "center"]):
-            loc_col = col
+    # 1. Match name_col (highest priority first)
+    name_candidates = ["employee_name", "employee_", "candidate_name", "student_name", "name", "candidate", "student", "member", "naam", "नाम"]
+    for cand in name_candidates:
+        for col in cols:
+            col_clean = col.lower()
+            if cand in col_clean and "verify" not in col_clean and "status" not in col_clean and "id" not in col_clean:
+                name_col = col
+                break
+        if name_col:
+            break
+
+    # 2. Match id_col
+    id_candidates = ["emp_id", "emp id", "student_id", "candidate_id", "roll", "s.no", "serial", "aadhaar", "aadhar"]
+    for cand in id_candidates:
+        for col in cols:
+            col_clean = col.lower()
+            if cand in col_clean and "verify" not in col_clean and "status" not in col_clean:
+                id_col = col
+                break
+        if id_col:
+            break
+
+    # 3. Match code_col
+    code_candidates = ["emp_code", "emp code", "candidate code", "student code"]
+    for cand in code_candidates:
+        for col in cols:
+            col_clean = col.lower()
+            if cand in col_clean:
+                code_col = col
+                break
+        if code_col:
+            break
+
+    # 4. Match dept_col
+    dept_candidates = ["emp_department", "department", "division", "subject", "course"]
+    for cand in dept_candidates:
+        for col in cols:
+            col_clean = col.lower()
+            if cand in col_clean:
+                dept_col = col
+                break
+        if dept_col:
+            break
+
+    # 5. Match loc_col
+    loc_candidates = ["emp_location", "emp_locat", "location", "office location", "center"]
+    for cand in loc_candidates:
+        for col in cols:
+            col_clean = col.lower()
+            if cand in col_clean:
+                loc_col = col
+                break
+        if loc_col:
+            break
 
     students = []
     for _, row in df.iterrows():
