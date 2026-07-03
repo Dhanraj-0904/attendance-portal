@@ -294,20 +294,32 @@ def parse_admin_student_list_csv(csv_content: bytes):
     Contains fields: Emp_ID, Employee_Name, Emp_Code, Emp_Department, Emp_Location.
     """
     try:
-        content_str = csv_content.decode("utf-8")
+        content_str = csv_content.decode("utf-8-sig")
     except UnicodeDecodeError:
-        content_str = csv_content.decode("latin1")
+        try:
+            content_str = csv_content.decode("utf-16")
+        except UnicodeDecodeError:
+            content_str = csv_content.decode("latin1")
 
     lines = content_str.splitlines()
     header_line_idx = 0
     for idx, line in enumerate(lines[:10]):
         line_lower = line.lower()
-        if any(h in line_lower for h in ["emp_id", "emp id", "employee_name", "name", "student", "candidate", "aadhaar", "aadhar", "s.no", "mobile", "phone"]):
+        if any(h in line_lower for h in ["emp_id", "emp id", "employee_", "employee", "name", "student", "candidate", "aadhaar", "aadhar", "s.no", "mobile", "phone"]):
             header_line_idx = idx
             break
 
+    # Detect separator (comma, tab, semicolon)
+    sep = ","
+    if header_line_idx < len(lines):
+        header_line = lines[header_line_idx]
+        if "\t" in header_line:
+            sep = "\t"
+        elif ";" in header_line and "," not in header_line:
+            sep = ";"
+
     csv_data_io = io.StringIO("\n".join(lines[header_line_idx:]))
-    df = pd.read_csv(csv_data_io)
+    df = pd.read_csv(csv_data_io, sep=sep)
     df.columns = [col.strip().replace('"', '') for col in df.columns]
 
     id_col = None
