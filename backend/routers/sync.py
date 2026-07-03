@@ -452,8 +452,63 @@ def delete_teacher_students(
     db.commit()
 
     log_action(db, current_user.id, "delete_teacher_students", "users", teacher_id)
-
     return {
         "message": f"Successfully deleted all {deleted_count} students assigned to teacher {teacher.username}.",
         "deleted_count": deleted_count
     }
+
+@router.post("/debug-csv")
+async def debug_csv(file: UploadFile = File(...)):
+    contents = await file.read()
+    try:
+        from ..services.csv_parser import parse_admin_student_list_csv
+        try:
+            content_str = contents.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            try:
+                content_str = contents.decode("utf-16")
+            except UnicodeDecodeError:
+                content_str = contents.decode("latin1")
+        
+        lines = content_str.splitlines()
+        first_10_lines = lines[:10]
+        
+        import pandas as pd
+        import io
+        
+        header_line_idx = 0
+        for idx, line in enumerate(lines[:10]):
+            line_lower = line.lower()
+            if any(h in line_lower for h in ["emp_id", "emp id", "employee_", "employee", "name", "student", "candidate", "aadhaar", "aadhar", "s.no", "mobile", "phone"]):
+                header_line_idx = idx
+                break
+                
+        sep = ","
+        if header_line_idx < len(lines):
+            header_line = lines[header_line_idx]
+            if "\t" in header_line:
+                sep = "\t"
+            elif ";" in header_line and "," not in header_line:
+                sep = ";"
+                
+        csv_data_io = io.StringIO("\n".join(lines[header_line_idx:]))
+        df = pd.read_csv(csv_data_io, sep=sep)
+        raw_columns = list(df.columns)
+        
+        parsed_students = parse_admin_student_list_csv(contents)
+        
+        return {
+            "success": True,
+            "raw_first_line": lines[0] if lines else "",
+            "header_line_idx": header_line_idx,
+            "detected_separator": sep,
+            "raw_columns": raw_columns,
+            "parsed_students_count": len(parsed_students),
+            "first_2_parsed_students": parsed_students[:2],
+            "first_2_raw_rows": df.head(2).to_dict(orient="records")
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
