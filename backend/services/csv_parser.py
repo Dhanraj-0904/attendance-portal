@@ -322,11 +322,11 @@ def parse_admin_student_list_csv(csv_content: bytes):
             code_col = col
         elif any(h in col_clean for h in ["emp_id", "emp id", "student id", "candidate id", "roll", "s.no", "serial", "aadhaar", "aadhar"]):
             id_col = col
-        elif any(h in col_clean for h in ["employee_name", "name", "candidate", "student", "member", "naam", "नाम"]):
+        elif any(h in col_clean for h in ["employee_name", "employee_", "employee", "name", "candidate", "student", "member", "naam", "नाम"]):
             name_col = col
         elif any(h in col_clean for h in ["emp_department", "department", "division", "subject", "course"]):
             dept_col = col
-        elif any(h in col_clean for h in ["emp_location", "location", "office location", "center"]):
+        elif any(h in col_clean for h in ["emp_location", "emp_locat", "location", "office location", "center"]):
             loc_col = col
 
     students = []
