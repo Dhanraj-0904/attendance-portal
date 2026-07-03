@@ -301,7 +301,8 @@ def parse_admin_student_list_csv(csv_content: bytes):
     lines = content_str.splitlines()
     header_line_idx = 0
     for idx, line in enumerate(lines[:10]):
-        if any(h in line for h in ["Emp_ID", "Emp ID", "Employee_Name", "Name"]):
+        line_lower = line.lower()
+        if any(h in line_lower for h in ["emp_id", "emp id", "employee_name", "name", "student", "candidate", "aadhaar", "aadhar", "s.no", "mobile", "phone"]):
             header_line_idx = idx
             break
 
@@ -317,15 +318,15 @@ def parse_admin_student_list_csv(csv_content: bytes):
 
     for col in df.columns:
         col_clean = col.lower()
-        if "emp_code" in col_clean or "emp code" in col_clean:
+        if any(h in col_clean for h in ["emp_code", "emp code", "candidate code", "student code"]):
             code_col = col
-        elif "emp_id" in col_clean or "emp id" in col_clean or "student id" in col_clean:
+        elif any(h in col_clean for h in ["emp_id", "emp id", "student id", "candidate id", "roll", "s.no", "serial", "aadhaar", "aadhar"]):
             id_col = col
-        elif "employee_name" in col_clean or "name" in col_clean:
+        elif any(h in col_clean for h in ["employee_name", "name", "candidate", "student", "member", "naam", "नाम"]):
             name_col = col
-        elif "emp_department" in col_clean or "department" in col_clean or "division" in col_clean:
+        elif any(h in col_clean for h in ["emp_department", "department", "division", "subject", "course"]):
             dept_col = col
-        elif "emp_location" in col_clean or "location" in col_clean or "office location" in col_clean:
+        elif any(h in col_clean for h in ["emp_location", "location", "office location", "center"]):
             loc_col = col
 
     students = []
@@ -341,7 +342,7 @@ def parse_admin_student_list_csv(csv_content: bytes):
 
         # Clean name from parenthetical codes
         clean_name, parsed_code = parse_name_and_code(name_val)
-        final_code = parsed_code or emp_code or (f"CAN_{emp_id}" if emp_id else f"CAN_{hash(clean_name) % 100000000}")
+        final_code = parsed_code or emp_code or (f"CAN_{emp_id}" if emp_id else f"CAN_{abs(hash(clean_name)) % 100000000}")
 
         students.append({
             "emp_id": final_code,
