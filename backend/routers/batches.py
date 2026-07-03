@@ -48,6 +48,8 @@ def get_batch_with_stats(batch: Batch, db: Session):
         "start_date": batch.start_date,
         "end_date": batch.end_date,
         "total_sessions": batch.total_sessions,
+        "total_hours": batch.total_hours,
+        "daily_duration": batch.daily_duration,
         "status": batch.status,
         "center_name": center.name if center else "Unknown Center",
         "teacher_name": teacher.username if teacher else "Unknown Teacher",
