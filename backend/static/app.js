@@ -910,6 +910,7 @@ if (uploadForm) {
                     startInput.required = true;
                     endInput.required = true;
                 }
+                renderSyncCalendar();
             });
         });
     }
@@ -1461,14 +1462,56 @@ function renderSyncCalendar() {
             cell.classList.add("uploaded");
         }
 
-        if (dateStr === selectedDateStr) {
-            cell.classList.add("selected-date");
+        const startInput = document.getElementById("upload-start-date");
+        const endInput = document.getElementById("upload-end-date");
+        const modeRadio = document.querySelector('input[name="sync-mode"]:checked');
+        const mode = modeRadio ? modeRadio.value : "one-day";
+
+        if (mode === "one-day") {
+            if (dateStr === selectedDateStr) {
+                cell.classList.add("selected-date");
+            }
+        } else {
+            const startVal = startInput ? startInput.value : "";
+            const endVal = endInput ? endInput.value : "";
+            if (startVal && dateStr === startVal) {
+                cell.classList.add("range-start");
+            }
+            if (endVal && dateStr === endVal) {
+                cell.classList.add("range-end");
+            }
+            if (startVal && endVal && dateStr > startVal && dateStr < endVal) {
+                cell.classList.add("range-mid");
+            }
         }
 
         cell.addEventListener("click", () => {
-            if (dateInput) {
-                dateInput.value = dateStr;
-                renderSyncCalendar();
+            const currentModeRadio = document.querySelector('input[name="sync-mode"]:checked');
+            const currentMode = currentModeRadio ? currentModeRadio.value : "one-day";
+
+            if (currentMode === "one-day") {
+                if (dateInput) {
+                    dateInput.value = dateStr;
+                    renderSyncCalendar();
+                }
+            } else {
+                if (startInput && endInput) {
+                    const startVal = startInput.value;
+                    const endVal = endInput.value;
+
+                    if (!startVal || (startVal && endVal)) {
+                        startInput.value = dateStr;
+                        endInput.value = "";
+                    } else {
+                        if (dateStr >= startVal) {
+                            endInput.value = dateStr;
+                        } else {
+                            startInput.value = dateStr;
+                            endInput.value = "";
+                        }
+                    }
+                    renderSyncCalendar();
+                }
             }
         });
 

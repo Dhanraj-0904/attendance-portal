@@ -1131,6 +1131,33 @@ body.light-theme select option[value=""] {
     background: rgba(124, 77, 255, 0.15) !important;
 }
 
+.calendar-day.range-start {
+    background: linear-gradient(135deg, var(--primary-color), #6366f1) !important;
+    color: white !important;
+    font-weight: bold;
+    border-radius: 8px 0 0 8px !important;
+    border-color: transparent !important;
+}
+
+.calendar-day.range-end {
+    background: linear-gradient(135deg, var(--primary-color), #6366f1) !important;
+    color: white !important;
+    font-weight: bold;
+    border-radius: 0 8px 8px 0 !important;
+    border-color: transparent !important;
+}
+
+.calendar-day.range-start.range-end {
+    border-radius: 8px !important;
+}
+
+.calendar-day.range-mid {
+    background: rgba(124, 77, 255, 0.15) !important;
+    color: #d8b4fe !important;
+    border-radius: 0 !important;
+    border-color: transparent !important;
+}
+
 .calendar-day.interactive {
     cursor: pointer;
     transition: all 0.2s ease;
