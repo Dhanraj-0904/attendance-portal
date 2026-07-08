@@ -59,9 +59,12 @@ def parse_attendance_csv(csv_content: bytes):
     """
     # Decode bytes to string
     try:
-        content_str = csv_content.decode("utf-8")
+        content_str = csv_content.decode("utf-8-sig")
     except UnicodeDecodeError:
-        content_str = csv_content.decode("latin1")
+        try:
+            content_str = csv_content.decode("utf-16")
+        except UnicodeDecodeError:
+            content_str = csv_content.decode("latin1")
 
     lines = content_str.splitlines()
     
@@ -72,8 +75,8 @@ def parse_attendance_csv(csv_content: bytes):
     location = "Unknown Location"
     header_line_idx = 0
 
-    # Look for headers in the first 5 lines
-    for idx, line in enumerate(lines[:5]):
+    # Look for headers in the first 10 lines (in case there's more metadata)
+    for idx, line in enumerate(lines[:10]):
         # Check for date range: e.g. "Date Range: 06/15/2026 - 06/20/2026"
         date_match = re.search(r'Date Range:\s*([0-9/.-]+)\s*-\s*([0-9/.-]+)', line, re.IGNORECASE)
         if date_match:
@@ -91,15 +94,27 @@ def parse_attendance_csv(csv_content: bytes):
             division = loc_div_match.group(2).strip()
 
         # Check if this line is the actual column headers
-        if "Emp Id" in line or "Attendance Id" in line or "Name" in line:
+        line_lower = line.lower()
+        if any(h in line_lower for h in ["emp id", "emp_id", "attendance id", "attendance_id", "name", "student", "candidate", "s.no"]):
             header_line_idx = idx
+            break
+
+    # Detect separator (comma, tab, semicolon)
+    sep = ","
+    if header_line_idx < len(lines):
+        header_line = lines[header_line_idx]
+        if "\t" in header_line:
+            sep = "\t"
+        elif ";" in header_line and "," not in header_line:
+            sep = ";"
 
     # Remove headers before reading csv with pandas
     csv_data_io = io.StringIO("\n".join(lines[header_line_idx:]))
-    df = pd.read_csv(csv_data_io)
+    df = pd.read_csv(csv_data_io, sep=sep)
     
     # Clean column names (strip quotes and spaces)
     df.columns = [col.strip().replace('"', '') for col in df.columns]
+    cols = [col for col in df.columns if "unnamed" not in col.lower()]
     
     # Map columns based on synonyms
     id_col = None
@@ -109,18 +124,55 @@ def parse_attendance_csv(csv_content: bytes):
     org_col = None
     division_col = None
     location_col = None
+    hours_col = None
 
-    for col in df.columns:
+    # Priority-based candidate matching to prevent wrong/unnamed overrides
+    # 1. Match name_col
+    name_candidates = ["employee_name", "employee_", "candidate_name", "student_name", "name", "candidate", "student", "member", "naam"]
+    for cand in name_candidates:
+        for col in cols:
+            col_clean = col.lower()
+            if cand in col_clean and not any(x in col_clean for x in ["verify", "status", "id", "org", "center", "location", "division", "office", "school", "unit"]):
+                name_col = col
+                break
+        if name_col:
+            break
+
+    # 2. Match id_col
+    id_candidates = ["emp_id", "emp id", "student_id", "candidate_id", "attendance id", "attendance_id", "roll", "s.no", "serial", "aadhaar", "aadhar"]
+    for cand in id_candidates:
+        for col in cols:
+            col_clean = col.lower()
+            if cand in col_clean and not any(x in col_clean for x in ["verify", "status", "org", "center", "location"]):
+                id_col = col
+                break
+        if id_col:
+            break
+
+    # 3. Match working days
+    for col in cols:
         col_clean = col.lower()
-        if "emp id" in col_clean or "attendance id" in col_clean:
-            id_col = col
-        elif "name" in col_clean and name_col is None:
-            name_col = col
-        elif "working days" in col_clean or "working" in col_clean:
+        if "working days" in col_clean or "working" in col_clean:
             working_days_col = col
-        elif "present" in col_clean:
+            break
+
+    # 4. Match present days
+    for col in cols:
+        col_clean = col.lower()
+        if "present" in col_clean and "verify" not in col_clean and "status" not in col_clean:
             present_days_col = col
-        elif "org name" in col_clean:
+            break
+
+    # 5. Match hours spent
+    for col in cols:
+        col_clean = col.lower()
+        if "hours spent" in col_clean or "total hours" in col_clean or "hours" in col_clean:
+            hours_col = col
+            break
+
+    for col in cols:
+        col_clean = col.lower()
+        if "org name" in col_clean or "org_name" in col_clean:
             org_col = col
         elif "division" in col_clean:
             division_col = col
@@ -147,12 +199,28 @@ def parse_attendance_csv(csv_content: bytes):
         total_days = int(row.get(working_days_col, 0)) if working_days_col else 0
         present_days = int(row.get(present_days_col, 0))
         
+        # Parse total hours spent (format: "HH:MM:SS" or decimal)
+        total_hours = 0.0
+        hrs_str = clean_cell_value(row.get(hours_col)) if hours_col else ""
+        if hrs_str and ":" in hrs_str:
+            try:
+                parts = hrs_str.split(":")
+                total_hours = float(parts[0]) + float(parts[1])/60.0
+            except:
+                pass
+        else:
+            try:
+                total_hours = float(hrs_str) if hrs_str else 0.0
+            except:
+                pass
+        
         students_list.append({
             "biometric_id": biometric_id,
             "name": clean_name,
             "sid_id": sid_id,
             "total_days": total_days,
-            "present_days": present_days
+            "present_days": present_days,
+            "total_hours": total_hours
         })
 
     # Update batch info from row 1 if available

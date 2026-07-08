@@ -186,6 +186,108 @@ async def upload_attendance_csv(
     }
 
 
+@router.post("/upload-range")
+async def upload_range_attendance(
+    batch_id: int = Form(...),
+    start_date: str = Form(...),
+    end_date: str = Form(...),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin", "teacher"]))
+):
+    from datetime import datetime, timedelta, date as dt_date
+    try:
+        s_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+        e_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+
+    if s_date > e_date:
+        raise HTTPException(status_code=400, detail="Start date must be before or equal to end date.")
+
+    if e_date > dt_date.today():
+        raise HTTPException(status_code=400, detail="Error: You cannot upload attendance for a future date.")
+
+    contents = await file.read()
+    try:
+        from ..services.csv_parser import parse_attendance_csv
+        parsed_data = parse_attendance_csv(contents)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to parse CSV: {str(e)}")
+
+    # Get allowed batches
+    if current_user.role == "teacher":
+        allowed_batches = db.query(Batch).filter(Batch.teacher_id == current_user.id).all()
+    else:
+        allowed_batches = db.query(Batch).all()
+
+    allowed_batch_ids = [b.id for b in allowed_batches]
+    if batch_id not in allowed_batch_ids:
+        raise HTTPException(status_code=403, detail="You do not have permission to sync data for this batch")
+
+    # Get working days in the range (excluding Sundays)
+    working_dates = []
+    curr = s_date
+    while curr <= e_date:
+        if curr.weekday() != 6: # exclude Sundays
+            working_dates.append(curr)
+        curr += timedelta(days=1)
+
+    if not working_dates:
+        raise HTTPException(status_code=400, detail="No working days (Monday-Saturday) found in the selected date range.")
+
+    students_synced = 0
+    records_created = 0
+
+    for s_info in parsed_data["students"]:
+        sid = s_info["sid_id"]
+        present_days = s_info["present_days"]
+        total_hours = s_info.get("total_hours", 0.0)
+
+        # Find student by candidate ID or biometric ID
+        student = db.query(Student).filter(
+            (Student.sid_student_id == sid) |
+            (Student.sid_student_id == f"CAN_{s_info['biometric_id']}")
+        ).first()
+
+        if student and student.batch_id in allowed_batch_ids:
+            # Delete old records in this range to prevent duplicates
+            db.query(AttendanceRecord).filter(
+                AttendanceRecord.student_id == student.id,
+                AttendanceRecord.session_date.in_(working_dates)
+            ).delete(synchronize_session=False)
+
+            daily_dur = min(total_hours / present_days, 24.0) if present_days > 0 else 0.0
+
+            # Mark the first `present_days` as present, the rest as absent
+            for idx, d_val in enumerate(working_dates):
+                status_val = "present" if idx < present_days else "absent"
+                hrs_val = daily_dur if status_val == "present" else 0.0
+
+                new_rec = AttendanceRecord(
+                    student_id=student.id,
+                    batch_id=student.batch_id,
+                    session_date=d_val,
+                    status=status_val,
+                    attended_hours=hrs_val,
+                    source="csv_upload",
+                    synced_at=datetime.utcnow()
+                )
+                db.add(new_rec)
+                records_created += 1
+
+            students_synced += 1
+
+    db.commit()
+    log_action(db, current_user.id, "upload_csv_range", "batches", batch_id)
+
+    return {
+        "message": f"Successfully synced weekly attendance for {students_synced} students. Processed {records_created} daily records.",
+        "students_synced": students_synced,
+        "records_synced": records_created
+    }
+
+
 @router.post("/admin-upload")
 async def upload_admin_student_list(
     batch_id: int = Form(...),

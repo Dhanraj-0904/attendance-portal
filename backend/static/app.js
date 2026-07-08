@@ -886,37 +886,101 @@ function updateFileName() {
 
 const uploadForm = document.getElementById("upload-csv-form");
 if (uploadForm) {
+    // Mode toggles
+    const syncModeRadios = document.getElementsByName("sync-mode");
+    const singleGroup = document.getElementById("date-single-group");
+    const rangeGroup = document.getElementById("date-range-group");
+    const singleInput = document.getElementById("upload-date-input");
+    const startInput = document.getElementById("upload-start-date");
+    const endInput = document.getElementById("upload-end-date");
+
+    if (syncModeRadios.length) {
+        syncModeRadios.forEach(radio => {
+            radio.addEventListener("change", (e) => {
+                if (e.target.value === "one-day") {
+                    singleGroup.classList.remove("hidden");
+                    rangeGroup.classList.add("hidden");
+                    singleInput.required = true;
+                    startInput.required = false;
+                    endInput.required = false;
+                } else {
+                    singleGroup.classList.add("hidden");
+                    rangeGroup.classList.remove("hidden");
+                    singleInput.required = false;
+                    startInput.required = true;
+                    endInput.required = true;
+                }
+            });
+        });
+    }
+
     uploadForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const batchId = document.getElementById("upload-batch-select").value;
-        const dateInput = document.getElementById("upload-date-input");
-        const dateVal = dateInput ? dateInput.value : "";
         const file = fileInput.files[0];
+        const mode = document.querySelector('input[name="sync-mode"]:checked').value;
 
-        if (!batchId || !file || !dateVal) {
-            showToast("Please select a batch, date, and upload a file", "error");
-            return;
-        }
-
-        // Validate future date
-        const selectedDate = new Date(dateVal);
-        const today = new Date();
-        selectedDate.setHours(0, 0, 0, 0);
-        today.setHours(0, 0, 0, 0);
-        
-        if (selectedDate > today) {
-            showToast("Error: You cannot upload attendance for a future date.", "error");
+        if (!batchId || !file) {
+            showToast("Please select a batch and upload a file", "error");
             return;
         }
 
         const formData = new FormData();
         formData.append("batch_id", batchId);
-        formData.append("date", dateVal);
         formData.append("file", file);
+
+        let endpointUrl = `${API_URL}/sync/upload`;
+
+        if (mode === "one-day") {
+            const dateVal = singleInput.value;
+            if (!dateVal) {
+                showToast("Please select an attendance date", "error");
+                return;
+            }
+            
+            // Validate future date
+            const selectedDate = new Date(dateVal);
+            const today = new Date();
+            selectedDate.setHours(0, 0, 0, 0);
+            today.setHours(0, 0, 0, 0);
+            if (selectedDate > today) {
+                showToast("Error: You cannot upload attendance for a future date.", "error");
+                return;
+            }
+            
+            formData.append("date", dateVal);
+        } else {
+            const startVal = startInput.value;
+            const endVal = endInput.value;
+            if (!startVal || !endVal) {
+                showToast("Please select both start and end dates", "error");
+                return;
+            }
+
+            const startDate = new Date(startVal);
+            const endDate = new Date(endVal);
+            const today = new Date();
+            startDate.setHours(0, 0, 0, 0);
+            endDate.setHours(0, 0, 0, 0);
+            today.setHours(0, 0, 0, 0);
+
+            if (startDate > endDate) {
+                showToast("Error: Start date must be before or equal to end date.", "error");
+                return;
+            }
+            if (endDate > today) {
+                showToast("Error: You cannot upload attendance for a future date.", "error");
+                return;
+            }
+
+            formData.append("start_date", startVal);
+            formData.append("end_date", endVal);
+            endpointUrl = `${API_URL}/sync/upload-range`;
+        }
 
         try {
             showToast("Parsing CSV and syncing database... Please wait.", "info");
-            const res = await fetch(`${API_URL}/sync/upload`, {
+            const res = await fetch(endpointUrl, {
                 method: "POST",
                 headers: {
                     "Authorization": `Bearer ${state.token}`
@@ -924,9 +988,13 @@ if (uploadForm) {
                 body: formData
             });
 
-            if (!res.ok) throw new Error("Sync failed");
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || "Sync failed");
+            }
+            
             const data = await res.json();
-            showToast(`Sync complete! Loaded ${data.students_synced} students, processed ${data.records_synced} records.`);
+            showToast(data.message || `Sync complete! Processed ${data.records_synced} records.`);
             switchTab("teacher-dashboard");
         } catch (err) {
             showToast(err.message, "error");
