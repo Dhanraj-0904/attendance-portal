@@ -162,12 +162,13 @@ def generate_batch_pdf(batch_info: dict, students_list: list) -> bytes:
         elif s['status'] == 'IMPOSSIBLE':
             status_text_color = '#dc2626' # Red
             
+        from .eligibility import format_hours_py
         table_data.append([
             Paragraph(str(idx), table_cell_style),
             Paragraph(s['sid_student_id'], table_cell_style),
             Paragraph(s['name'], table_cell_style),
-            Paragraph(f"{round(s['attended_sessions'], 1)} hrs", table_cell_style),
-            Paragraph(f"{round(s['missed_sessions'], 1)} hrs", table_cell_style),
+            Paragraph(f"{format_hours_py(s['attended_sessions'])} hrs", table_cell_style),
+            Paragraph(f"{format_hours_py(s['missed_sessions'])} hrs", table_cell_style),
             Paragraph(f"<b>{s['attendance_pct']}%</b>", table_cell_style),
             Paragraph(f"<font color='{status_text_color}'><b>{s['status']}</b></font>", table_cell_style),
         ])

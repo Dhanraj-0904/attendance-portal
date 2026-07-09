@@ -18,6 +18,15 @@ const GAZETTED_HOLIDAYS_2026 = [
     "2026-12-25"  // Christmas Day
 ];
 
+// Hours formatting utility to convert float hours (e.g. 44.6) to minutes-based decimals (e.g. 44.36)
+function formatHours(hours) {
+    if (hours === undefined || hours === null || isNaN(hours)) return "0.00";
+    const totalMins = Math.round(hours * 60);
+    const h = Math.floor(totalMins / 60);
+    const m = totalMins % 60;
+    return `${h}.${String(m).padStart(2, '0')}`;
+}
+
 // Theme Management Logic
 function initTheme() {
     const currentTheme = localStorage.getItem("theme") || "dark";
@@ -308,9 +317,9 @@ async function viewAdminBatchDetails(batchId) {
         
         body.innerHTML = students.map(s => {
             const status_badge = s.status === "ELIGIBLE" ? "badge-success" : (s.status === "AT_RISK" ? "badge-warning" : "badge-danger");
-            const attendedHrs = s.sessions_attended.toFixed(1);
-            const missedHrs = s.sessions_missed.toFixed(1);
-            const neededHrs = s.sessions_needed_for_75.toFixed(1);
+            const attendedHrs = formatHours(s.sessions_attended);
+            const missedHrs = formatHours(s.sessions_missed);
+            const neededHrs = formatHours(s.sessions_needed_for_75);
 
             return `
                 <tr>
@@ -772,9 +781,9 @@ async function viewTeacherBatchDetails(batchId) {
         
         body.innerHTML = students.map(s => {
             const status_badge = s.status === "ELIGIBLE" ? "badge-success" : (s.status === "AT_RISK" ? "badge-warning" : "badge-danger");
-            const attendedHrs = s.sessions_attended.toFixed(1);
-            const missedHrs = s.sessions_missed.toFixed(1);
-            const neededHrs = s.sessions_needed_for_75.toFixed(1);
+            const attendedHrs = formatHours(s.sessions_attended);
+            const missedHrs = formatHours(s.sessions_missed);
+            const neededHrs = formatHours(s.sessions_needed_for_75);
 
             return `
                 <tr>
@@ -1023,14 +1032,12 @@ async function loadStudentDashboard() {
 
         // Calculate hours based on total hours from backend
         const totalHrs = data.total_hours || 330;
-        const totalSessions = data.sessions_attended + data.sessions_missed + data.sessions_remaining;
-        const sessionDuration = totalSessions > 0 ? (totalHrs / totalSessions) : 0;
         
-        const attendedHrs = (data.sessions_attended * sessionDuration).toFixed(1);
-        const missedHrs = (data.sessions_missed * sessionDuration).toFixed(1);
-        const neededHrs = (data.sessions_needed_for_75 * sessionDuration).toFixed(1);
+        const attendedHrs = formatHours(data.sessions_attended);
+        const missedHrs = formatHours(data.sessions_missed);
+        const neededHrs = formatHours(data.sessions_needed_for_75);
 
-        document.getElementById("student-stat-attended").innerText = `${attendedHrs} / ${totalHrs} hrs`;
+        document.getElementById("student-stat-attended").innerText = `${attendedHrs} / ${formatHours(totalHrs)} hrs`;
         document.getElementById("student-stat-missed").innerText = `${missedHrs} hrs`;
         document.getElementById("student-stat-remaining").innerText = `${neededHrs} hrs`;
 

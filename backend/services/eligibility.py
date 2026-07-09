@@ -92,3 +92,16 @@ def calculate_batch_eligibility(students_eligibility_list):
         "at_risk_students_count": at_risk_count,
         "status": status
     }
+
+
+def format_hours_py(hours_float: float) -> str:
+    """
+    Formats standard float hours (e.g. 44.6) as minutes-based decimals (e.g. "44.36").
+    The decimal part represents actual minutes, ranging from .00 to .59.
+    """
+    if not hours_float or hours_float <= 0:
+        return "0.00"
+    total_mins = int(round(hours_float * 60))
+    h = total_mins // 60
+    m = total_mins % 60
+    return f"{h}.{m:02d}"

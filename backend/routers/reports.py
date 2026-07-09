@@ -78,13 +78,14 @@ def get_batch_excel_report(
     records_data = []
     for s in students:
         s_stats = get_student_with_stats(s, db)
+        from ..services.eligibility import format_hours_py
         records_data.append({
             "SID Student ID": s_stats["sid_student_id"],
             "Student Name": s_stats["name"],
             "Phone Number": s_stats["phone"] or "N/A",
             "Total Sessions": batch.total_sessions,
-            "Attended": s_stats["attended_sessions"],
-            "Missed": s_stats["missed_sessions"],
+            "Attended": float(format_hours_py(s_stats["attended_sessions"])),
+            "Missed": float(format_hours_py(s_stats["missed_sessions"])),
             "Attendance %": f"{s_stats['attendance_pct']}%",
             "Eligibility Status": s_stats["status"],
             "Sessions Needed to Qualify": s_stats["still_need_to_attend"]
