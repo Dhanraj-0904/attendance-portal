@@ -137,7 +137,8 @@ def register_user(
         role=user_in.role,
         phone=user_in.phone,
         subject=user_in.subject,
-        is_active=user_in.is_active
+        is_active=user_in.is_active,
+        plain_password=user_in.password
     )
     db.add(new_user)
     db.commit()
