@@ -108,6 +108,53 @@ def get_batch_excel_report(
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 
+from sqlalchemy import func
+from ..services.eligibility import calculate_student_eligibility
+
+def get_all_students_stats(db: Session):
+    all_students = db.query(Student).all()
+    all_batches = db.query(Batch).all()
+    batches_map = {b.id: b for b in all_batches}
+    
+    attended_hours_res = db.query(
+        AttendanceRecord.student_id,
+        func.sum(AttendanceRecord.attended_hours)
+    ).group_by(AttendanceRecord.student_id).all()
+    attended_hours_map = {student_id: float(val or 0.0) for student_id, val in attended_hours_res}
+    
+    sessions_held_res = db.query(
+        AttendanceRecord.student_id,
+        func.count(AttendanceRecord.id)
+    ).group_by(AttendanceRecord.student_id).all()
+    sessions_held_map = {student_id: int(val or 0) for student_id, val in sessions_held_res}
+    
+    student_stats_map = {}
+    for student in all_students:
+        batch = batches_map.get(student.batch_id)
+        if not batch:
+            student_stats_map[student.id] = {
+                "attendance_pct": 0.0,
+                "status": "IMPOSSIBLE"
+            }
+            continue
+            
+        attended_hours_sum = attended_hours_map.get(student.id, 0.0)
+        sessions_held = sessions_held_map.get(student.id, 0)
+        
+        std_session_len = batch.daily_duration if batch.daily_duration else (batch.total_hours / batch.total_sessions if batch.total_sessions > 0 else 8.25)
+        missed_hours = max(0.0, (sessions_held * std_session_len) - attended_hours_sum)
+        remaining_sessions = max(0, batch.total_sessions - sessions_held)
+        remaining_hours = remaining_sessions * std_session_len
+        
+        elig = calculate_student_eligibility(batch.total_hours, attended_hours_sum, remaining_hours)
+        
+        student_stats_map[student.id] = {
+            "attendance_pct": elig["current_pct"],
+            "status": elig["status"]
+        }
+        
+    return student_stats_map
+
 @router.get("/global")
 def get_global_admin_stats(
     db: Session = Depends(get_db), 
@@ -124,12 +171,13 @@ def get_global_admin_stats(
     total_batches = db.query(Batch).count()
     total_centers = db.query(Center).count()
     
+    # Calculate student stats in bulk to avoid N+1 query latency
+    student_stats_map = get_all_students_stats(db)
+    
     # Calculate at risk students globally
     at_risk_count = 0
-    all_students = db.query(Student).all()
-    for s in all_students:
-        s_stats = get_student_with_stats(s, db)
-        if s_stats["status"] in ["AT_RISK", "IMPOSSIBLE"]:
+    for stats in student_stats_map.values():
+        if stats["status"] in ["AT_RISK", "IMPOSSIBLE"]:
             at_risk_count += 1
 
     # Center-wise comparison
@@ -145,8 +193,8 @@ def get_global_admin_stats(
             b_students = db.query(Student).filter(Student.batch_id == b.id).all()
             c_student_count += len(b_students)
             for s in b_students:
-                s_stats = get_student_with_stats(s, db)
-                total_pct_sum += s_stats["attendance_pct"]
+                stats = student_stats_map.get(s.id, {"attendance_pct": 0.0, "status": "IMPOSSIBLE"})
+                total_pct_sum += stats["attendance_pct"]
                 
         avg_attendance = round(total_pct_sum / c_student_count, 1) if c_student_count > 0 else 0.0
         center_stats.append({
@@ -171,8 +219,8 @@ def get_global_admin_stats(
             b_students = db.query(Student).filter(Student.batch_id == b.id).all()
             t_student_count += len(b_students)
             for s in b_students:
-                s_stats = get_student_with_stats(s, db)
-                t_pct_sum += s_stats["attendance_pct"]
+                stats = student_stats_map.get(s.id, {"attendance_pct": 0.0, "status": "IMPOSSIBLE"})
+                t_pct_sum += stats["attendance_pct"]
                 
         avg_attendance = round(t_pct_sum / t_student_count, 1) if t_student_count > 0 else 0.0
         teacher_stats.append({
