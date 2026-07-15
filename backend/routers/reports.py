@@ -128,6 +128,12 @@ def get_all_students_stats(db: Session):
     ).group_by(AttendanceRecord.student_id).all()
     sessions_held_map = {student_id: int(val or 0) for student_id, val in sessions_held_res}
     
+    absent_days_res = db.query(
+        AttendanceRecord.student_id,
+        func.count(AttendanceRecord.id)
+    ).filter(AttendanceRecord.status == "absent").group_by(AttendanceRecord.student_id).all()
+    absent_days_map = {student_id: int(val or 0) for student_id, val in absent_days_res}
+    
     student_stats_map = {}
     for student in all_students:
         batch = batches_map.get(student.batch_id)
@@ -140,9 +146,10 @@ def get_all_students_stats(db: Session):
             
         attended_hours_sum = attended_hours_map.get(student.id, 0.0)
         sessions_held = sessions_held_map.get(student.id, 0)
+        absent_days = absent_days_map.get(student.id, 0)
         
         std_session_len = batch.daily_duration if batch.daily_duration else (batch.total_hours / batch.total_sessions if batch.total_sessions > 0 else 8.25)
-        missed_hours = max(0.0, (sessions_held * std_session_len) - attended_hours_sum)
+        missed_hours = absent_days * std_session_len
         remaining_sessions = max(0, batch.total_sessions - sessions_held)
         remaining_hours = remaining_sessions * std_session_len
         

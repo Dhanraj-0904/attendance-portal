@@ -57,7 +57,11 @@ def get_student_with_stats(student: Student, db: Session):
     ).count()
 
     std_session_len = batch.daily_duration if batch.daily_duration else (batch.total_hours / batch.total_sessions if batch.total_sessions > 0 else 8.25)
-    missed_hours = max(0.0, (sessions_held * std_session_len) - attended_hours_sum)
+    absent_days = db.query(AttendanceRecord).filter(
+        AttendanceRecord.student_id == student.id,
+        AttendanceRecord.status == "absent"
+    ).count()
+    missed_hours = absent_days * std_session_len
     remaining_sessions = max(0, batch.total_sessions - sessions_held)
     remaining_hours = remaining_sessions * std_session_len
     
