@@ -420,6 +420,8 @@ async function loadAdminBatches() {
         const res = await fetch(`${API_URL}/batches/`, { headers: getHeaders() });
         if (!res.ok) throw new Error("Failed to load batches");
         const batches = await res.json();
+        
+        state.batches = batches;
 
         const body = document.getElementById("admin-batches-table-body");
         body.innerHTML = batches.map(b => {
@@ -437,6 +439,7 @@ async function loadAdminBatches() {
                     <td>
                         <div class="actions-cell">
                             <button class="btn btn-primary btn-small" onclick="viewAdminBatchDetails(${b.id})">🔍 View</button>
+                            <button class="btn btn-secondary btn-small" onclick="openEditBatchModal(${b.id})">✏️ Edit</button>
                             <button class="btn btn-destructive btn-small" onclick="deleteBatch(${b.id})">🗑️ Delete</button>
                         </div>
                     </td>
@@ -478,6 +481,8 @@ async function loadAdminTeachers() {
     try {
         const usersRes = await fetch(`${API_URL}/reports/global`, { headers: getHeaders() });
         const data = await usersRes.json();
+        
+        state.teachers = data.teachers || [];
 
         const body = document.getElementById("admin-teachers-table-body");
         body.innerHTML = data.teachers.map(t => `
@@ -492,6 +497,7 @@ async function loadAdminTeachers() {
                 <td>${t.subject || 'N/A'}</td>
                 <td>
                     <div class="actions-cell">
+                        <button class="btn btn-secondary btn-small" onclick="openEditTeacherModal(${t.id})">✏️ Edit</button>
                         <button class="btn btn-secondary btn-small" onclick="openUploadCSVForTeacher(${t.id}, '${t.username}')">📤 Upload CSV</button>
                         <button class="btn btn-primary btn-small" onclick="openResetPasswordModal(${t.id}, '${t.username}', false)">🔑 Password</button>
                     </div>
@@ -1897,3 +1903,128 @@ function toggleMobileNav() {
     }
 }
 window.toggleMobileNav = toggleMobileNav;
+
+// ----------------- Edit Batch Logic -----------------
+async function openEditBatchModal(batchId) {
+    const batch = state.batches.find(b => b.id === batchId);
+    if (!batch) {
+        showToast("Batch data not found", "error");
+        return;
+    }
+    
+    document.getElementById("edit-batch-id").value = batch.id;
+    document.getElementById("edit-batch-course").value = batch.course_name;
+    document.getElementById("edit-batch-start").value = batch.start_date;
+    document.getElementById("edit-batch-end").value = batch.end_date || "";
+    document.getElementById("edit-batch-hours").value = batch.total_hours;
+    document.getElementById("edit-batch-duration").value = batch.daily_duration;
+    document.getElementById("edit-batch-status").value = batch.status || "active";
+    
+    const centerSelect = document.getElementById("edit-batch-center");
+    const teacherSelect = document.getElementById("edit-batch-teacher");
+    
+    try {
+        const [cRes, uRes] = await Promise.all([
+            fetch(`${API_URL}/centers/`, { headers: getHeaders() }),
+            fetch(`${API_URL}/reports/global`, { headers: getHeaders() })
+        ]);
+        const centers = await cRes.json();
+        const globalData = await uRes.json();
+        
+        centerSelect.innerHTML = centers.map(c => `<option value="${c.id}" ${c.id === batch.center_id ? 'selected' : ''}>${c.name}</option>`).join("");
+        teacherSelect.innerHTML = globalData.teachers.map(t => `<option value="${t.id}" ${t.id === batch.teacher_id ? 'selected' : ''}>${t.username}</option>`).join("");
+        
+        openModal("edit-batch-modal");
+    } catch (err) {
+        showToast("Failed to load options: " + err.message, "error");
+    }
+}
+window.openEditBatchModal = openEditBatchModal;
+
+document.getElementById("edit-batch-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const batchId = document.getElementById("edit-batch-id").value;
+    
+    const payload = {
+        center_id: parseInt(document.getElementById("edit-batch-center").value),
+        teacher_id: parseInt(document.getElementById("edit-batch-teacher").value),
+        course_name: document.getElementById("edit-batch-course").value,
+        start_date: document.getElementById("edit-batch-start").value,
+        end_date: document.getElementById("edit-batch-end").value || null,
+        total_sessions: 40,
+        total_hours: parseInt(document.getElementById("edit-batch-hours").value),
+        daily_duration: parseFloat(document.getElementById("edit-batch-duration").value),
+        status: document.getElementById("edit-batch-status").value,
+        sid_batch_id: ""
+    };
+    
+    payload.total_sessions = Math.ceil(payload.total_hours / payload.daily_duration);
+    
+    try {
+        const res = await fetch(`${API_URL}/batches/${batchId}`, {
+            method: "PUT",
+            headers: getHeaders(),
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || "Failed to update batch");
+        }
+        showToast("Batch details updated successfully!");
+        closeModal("edit-batch-modal");
+        loadAdminBatches();
+    } catch (err) {
+        showToast(err.message, "error");
+    }
+});
+
+// ----------------- Edit Teacher Logic -----------------
+function openEditTeacherModal(teacherId) {
+    const teacher = state.teachers.find(t => t.id === teacherId);
+    if (!teacher) {
+        showToast("Teacher data not found", "error");
+        return;
+    }
+    
+    document.getElementById("edit-teacher-id").value = teacher.id;
+    document.getElementById("edit-teach-username").value = teacher.username;
+    document.getElementById("edit-teach-email").value = teacher.email || "";
+    document.getElementById("edit-teach-phone").value = teacher.phone || "";
+    document.getElementById("edit-teach-subject").value = teacher.subject || "";
+    document.getElementById("edit-teach-password").value = "";
+    document.getElementById("edit-teach-status").value = teacher.is_active === false ? "false" : "true";
+    
+    openModal("edit-teacher-modal");
+}
+window.openEditTeacherModal = openEditTeacherModal;
+
+document.getElementById("edit-teacher-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const teacherId = document.getElementById("edit-teacher-id").value;
+    
+    const payload = {
+        username: document.getElementById("edit-teach-username").value,
+        email: document.getElementById("edit-teach-email").value,
+        phone: document.getElementById("edit-teach-phone").value,
+        subject: document.getElementById("edit-teach-subject").value,
+        password: document.getElementById("edit-teach-password").value || null,
+        is_active: document.getElementById("edit-teach-status").value === "true"
+    };
+    
+    try {
+        const res = await fetch(`${API_URL}/auth/teachers/${teacherId}`, {
+            method: "PUT",
+            headers: getHeaders(),
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || "Failed to update teacher");
+        }
+        showToast("Teacher details updated successfully!");
+        closeModal("edit-teacher-modal");
+        loadAdminTeachers();
+    } catch (err) {
+        showToast(err.message, "error");
+    }
+});

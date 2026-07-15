@@ -7,7 +7,7 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import User, AuditLog, Batch, Student, AttendanceRecord
-from ..schemas import Token, UserCreate, UserResponse
+from ..schemas import Token, UserCreate, UserResponse, UserUpdate
 
 # Security configuration
 SECRET_KEY = "ngo_attendance_secret_key_change_me_in_production"
@@ -242,3 +242,35 @@ def delete_teacher(
 
     log_action(db, current_user.id, "delete_teacher", "users", teacher_id)
     return {"message": f"Successfully deleted teacher '{teacher.username}' and all associated batches and students."}
+
+@router.put("/teachers/{teacher_id}", response_model=UserResponse)
+def update_teacher(
+    teacher_id: int,
+    user_in: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin"]))
+):
+    teacher = db.query(User).filter(User.id == teacher_id, User.role == "teacher").first()
+    if not teacher:
+        raise HTTPException(status_code=404, detail="Teacher not found.")
+
+    # Check duplicate username
+    dup = db.query(User).filter(User.username == user_in.username, User.id != teacher_id).first()
+    if dup:
+        raise HTTPException(status_code=400, detail="Username already registered")
+
+    teacher.username = user_in.username
+    teacher.email = user_in.email
+    teacher.phone = user_in.phone
+    teacher.subject = user_in.subject
+    teacher.is_active = user_in.is_active
+
+    if user_in.password:
+        teacher.hashed_password = get_password_hash(user_in.password)
+        teacher.plain_password = user_in.password
+
+    db.commit()
+    db.refresh(teacher)
+
+    log_action(db, current_user.id, "update_teacher", "users", teacher_id)
+    return teacher
