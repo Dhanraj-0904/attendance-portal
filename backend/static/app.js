@@ -1906,7 +1906,7 @@ window.toggleMobileNav = toggleMobileNav;
 
 // ----------------- Edit Batch Logic -----------------
 async function openEditBatchModal(batchId) {
-    const batch = state.batches.find(b => b.id === batchId);
+    const batch = state.batches.find(b => b.id == batchId);
     if (!batch) {
         showToast("Batch data not found", "error");
         return;
@@ -1980,7 +1980,7 @@ document.getElementById("edit-batch-form").addEventListener("submit", async (e) 
 
 // ----------------- Edit Teacher Logic -----------------
 function openEditTeacherModal(teacherId) {
-    const teacher = state.teachers.find(t => t.id === teacherId);
+    const teacher = state.teachers.find(t => t.id == teacherId);
     if (!teacher) {
         showToast("Teacher data not found", "error");
         return;
